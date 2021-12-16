@@ -23,20 +23,20 @@ typedef struct i2c {
 } i2c;
 
 
-i2c* init_i2c(unsigned char* i2c_devicename, unsigned char addr, int nbytes) {
+i2c* init_i2c(char* i2c_devicename, unsigned char addr, int nbytes) {
 	i2c * new = (i2c *) malloc(sizeof(i2c));
 	if (new == NULL) {
 		printf("Error initializing i2c struct.\n");
-		return -1;
+		exit(1);
 	}
 	new->buf = (unsigned char *) malloc(sizeof(unsigned char) * nbytes);
 	if (new->buf == NULL) {
 		printf("Error allocating byte buffer in i2c struct.\n");
-		return -1;
+		exit(1);
 	}
-	if (new->fd = open(i2c_devicename, O_RDWR) < 0) {
+	if ((new->fd = open(i2c_devicename, O_RDWR)) < 0) {
 		printf("Error opening i2c device.\n");
-		return -1;
+		exit(1);
 	}
 	new->addr = addr;
 
@@ -60,52 +60,53 @@ int i2c_read(i2c* aa, int nbytes) {
 	msgs[1].addr = aa->addr;
 	msgs[1].flags = I2C_M_RD | I2C_M_NOSTART; 
 	msgs[1].len = nbytes; 
-	msgs[1].buf = inbuf;
+	msgs[1].buf = aa->buf;
 
 	msgset[0].msgs = msgs;
 	msgset[0].nmsgs = 2;
 
-	outbuf[0] = reg;
+	outbuf[0] = aa->reg;
 
 	inbuf[0] = 0;
 	inbuf[1] = 0;
 
-	*a = 0;
-	*b = 0;
-	if (ioctl(file, I2C_RDWR, &msgset) < 0) {
+	aa->buf[0] = 0;
+	aa->buf[1] = 0;
+	if (ioctl(aa->fd, I2C_RDWR, &msgset) < 0) {
 		printf("error reading 2 bytes\n");
 		return -1;
 	}
 
-	*a = inbuf[0];
-	*b = inbuf[1];
+	//aa->buf[0] = inbuf[0];
+	//aa->buf[1] = inbuf[1];
 
 
-	return -1;
+	return 0;
 } 
 
 
 int main(int argc, char **argv) {
 
-	int file;
 	char i2c_device[]="/dev/i2c-1";
 	unsigned char buf[10];
-	int result;
-	int addr = 0x10;
+	unsigned char addr = 0x10;
 	unsigned char comm = 0x04;
-	unsigned char a, b;
 
-	/* open the i2c device */
+	u8 a, b;
+	i2c* bb = init_i2c(i2c_device, addr, 50);
+
+	/* open the i2c device 
 	file = open(i2c_device, O_RDWR);
 
-	/* error handling */
+	
 	if (file < 0) {
 		printf("File did not open.\n");
 		exit(1);
 	}
+	*/
 
 	/* set i2c slave address */
-	if (ioctl(file, I2C_SLAVE, addr) < 0) {
+	if (ioctl(bb->fd, I2C_SLAVE, 0x10) < 0) {
 		printf("Failed to set i2c address.\n");
 		exit(1);
 	}
@@ -116,17 +117,17 @@ int main(int argc, char **argv) {
 	buf[1] = 0x00;
 	buf[2] = 0x18;
 
-	result = write(file, buf, 3); // write 1 byte: 0000 0000 (command 0x00)
+	write(bb->fd, buf, 3); // write 1 byte: 0000 0000 (command 0x00)
 
 	buf[0] = 0x01;	
 	buf[1] = 0x00;
 	buf[2] = 0x00;
-	result = write(file, buf, 3);
+	write(bb->fd, buf, 3);
 
 	buf[0] = 0x02;
 	buf[1] = 0x00;
 	buf[2] = 0x00;
-	result = write(file, buf, 3);
+	write(bb->fd, buf, 3);
 	
 	/*	
 	buf[0] = 0x03;
@@ -134,15 +135,16 @@ int main(int argc, char **argv) {
 	buf[2] = 0x00;
 	result = write(file, buf, 3);
 	*/
+	bb->reg = 0x04; // set register to 0x04
 	while(1) {		
 		sleep(1);
 	
 		/* read 2 bytes from sensor after sending 1 byte command */
-		i2c_read(file, (u8)addr, (u8)comm, &a, &b); 	
-		printf("%x %x\n", b, a);
+		i2c_read(bb, 2); 	
+		printf("%x %x\n", bb->buf[1], bb->buf[0]);
 	}
 
-	close(file);
+	close(bb->fd);
 	
 	return 0;
 }
