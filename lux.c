@@ -15,24 +15,51 @@ struct i2c_rdwr_ioctl_data {
 };
 */
 
+typedef struct i2c {
+	int fd;
+	unsigned char addr;
+	unsigned char reg;
+	unsigned char *buf; //allocate max. number of bytes you want to read/write in a single transaction
+} i2c;
+
+
+i2c* init_i2c(unsigned char* i2c_devicename, unsigned char addr, int nbytes) {
+	i2c * new = (i2c *) malloc(sizeof(i2c));
+	if (new == NULL) {
+		printf("Error initializing i2c struct.\n");
+		return -1;
+	}
+	new->buf = (unsigned char *) malloc(sizeof(unsigned char) * nbytes);
+	if (new->buf == NULL) {
+		printf("Error allocating byte buffer in i2c struct.\n");
+		return -1;
+	}
+	if (new->fd = open(i2c_devicename, O_RDWR) < 0) {
+		printf("Error opening i2c device.\n");
+		return -1;
+	}
+	new->addr = addr;
+
+	return new;
+}
+
 /* this function taken from https://gist.github.com/JamesDunne/9b7fbedb74c22ccc833059623f47beb7 */
 typedef unsigned char u8;
 
-int i2c_read(int file, u8 slave_addr, u8 reg, u8 *a, u8 *b) {
+int i2c_read(i2c* aa, int nbytes) {
 
-	//int retval;
 	u8 outbuf[1], inbuf[2];
 	struct i2c_msg msgs[2];
 	struct i2c_rdwr_ioctl_data msgset[1];
 
-	msgs[0].addr = slave_addr;
+	msgs[0].addr = aa->addr;
 	msgs[0].flags = 0;
 	msgs[0].len = 1;
 	msgs[0].buf = outbuf;
 
-	msgs[1].addr = slave_addr;
+	msgs[1].addr = aa->addr;
 	msgs[1].flags = I2C_M_RD | I2C_M_NOSTART; 
-	msgs[1].len = 2; 
+	msgs[1].len = nbytes; 
 	msgs[1].buf = inbuf;
 
 	msgset[0].msgs = msgs;
@@ -54,7 +81,7 @@ int i2c_read(int file, u8 slave_addr, u8 reg, u8 *a, u8 *b) {
 	*b = inbuf[1];
 
 
-	return 0;
+	return -1;
 } 
 
 
