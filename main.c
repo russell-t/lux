@@ -8,43 +8,39 @@
 #include <stdlib.h> //exit()
 #include "i2c.h"
 
-/* See https://www.kernel.org/doc/html/latest/i2c/dev-interface.html */
-/*
-struct i2c_rdwr_ioctl_data_bytes {
-	struct i2c_msg *msgs;
-	int nmsgs;
-};
-*/
-int main(int argc, char **argv) {
+i2c* veml7700_init(void) {
 
-	char i2c_device[]="/dev/i2c-1";
+	/* veml7700 is located at device address 0x10 */
+	i2c *lux = init_i2c("/dev/i2c-1", 0x10);	
 
-	unsigned char cmd0[3] = {0x00, 0x00, 0x18};
-	unsigned char cmd1[3] = {0x01, 0x00, 0x00};
-	unsigned char cmd2[3] = {0x02, 0x00, 0x00};
-	unsigned char buffer[3];
-	unsigned char buff[2] = {0x0f, 0x00};
+	unsigned char init[3][3] = {
+					{0x00, 0x00, 0x18},
+					{0x01, 0x00, 0x00},
+					{0x02, 0x00, 0x00}
+	};
 
-	i2c* bb = init_i2c(i2c_device, 0x10);
-	i2c* cc = init_i2c(i2c_device, 0x1d);
-
-	i2c_write(bb, cmd0, 2);
-	i2c_write(bb, cmd1, 2);
-	i2c_write(bb, cmd2, 2);
-
-	buffer[0] = 0x04;
-	i2c_read(cc, buff, 1);
-	printf("Accelerometer reading: 0x%x\n", buff[1]);
-
-	while(1) {		
-
-		sleep(1);
-		i2c_read(bb, buffer, 2); 	
-		printf("0x%x 0x%x\n", buffer[2], buffer[1]);
+	int i;
+	for (i = 0; i<3; i++) {
+		i2c_write(lux, init[i], 2);
 	}
 
-	close(bb->fd);
-	free(bb);
+	return lux;
+}
+
+int main(int argc, char **argv) {
+
+
+	unsigned char buffer[3];
+	i2c* lux = veml7700_init();
+	buffer[0] = 0x04;
+
+	while(1) {		
+		sleep(1);
+		i2c_read(lux, buffer, 2); 	
+		printf("0x%.2x 0x%.2x\n", buffer[2], buffer[1]);
+	}
+
+	destroy_i2c(lux);
 	
 	return 0;
 }

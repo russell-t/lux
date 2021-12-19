@@ -33,6 +33,7 @@ i2c* init_i2c(char* i2c_devicename, unsigned char addr) {
 
 void destroy_i2c(i2c* aa) {
 
+	close(aa->fd);
 	free(aa);
 
 }
@@ -52,6 +53,7 @@ int i2c_write(i2c* aa, unsigned char *data_bytes, int nbytes) {
 
 	/* Write */
 	if (ioctl(aa->fd, I2C_RDWR, &msgset) < 0) {
+		printf("Error writing to i2c device.\n");
 		return -1;
 	}
 
